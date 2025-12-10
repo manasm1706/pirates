@@ -1,0 +1,23 @@
+body {
+  margin: 0;
+  background: #efeaff;
+  font-family: 'Courier New';
+  color: #6546FF;
+  text-align: center;
+}
+
+#gameCanvas {
+  display: block;
+  margin: 20px auto;
+  background: #c9bfff;
+  border: 2px solid #6546FF;
+}
+
+h1 {
+  font-size: 38px;
+  margin-bottom: 0;
+}
+p {
+  margin-top: 4px;
+  font-size: 16px;
+}

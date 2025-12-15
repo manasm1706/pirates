@@ -1,10 +1,10 @@
 /* =========================
    CANVAS SETUP
 ========================= */
-const canvas = document.getElementById("game");
+const canvas = document.getElementById("gameCanvas");
 
 if (!canvas) {
-  throw new Error("Canvas with id='game' not found. Check index.html.");
+  throw new Error("Canvas not found. ID mismatch.");
 }
 
 const ctx = canvas.getContext("2d");

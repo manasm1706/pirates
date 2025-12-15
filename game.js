@@ -2,7 +2,13 @@
    CANVAS SETUP
 ========================= */
 const canvas = document.getElementById("game");
+
+if (!canvas) {
+  throw new Error("Canvas with id='game' not found. Check index.html.");
+}
+
 const ctx = canvas.getContext("2d");
+
 
 /* =========================
    GAME STATE

@@ -13,14 +13,14 @@ let lives = 3;
 let level = 1;
 
 /* =========================
-   ASSETS
+   ASSETS (MATCH YOUR FILES)
 ========================= */
 const assets = {};
 const assetList = {
   ship: "assets/sprites/ship.png",
-  invader: "assets/sprites/invader.png",
+  invader: "assets/sprites/enemy_1.png",
   bullet: "assets/sprites/bullet.png",
-  bg: "assets/sprites/bg.png"
+  boss: "assets/sprites/boss.png"
 };
 
 let loaded = 0;
@@ -38,13 +38,16 @@ function loadAssets(start) {
 }
 
 /* =========================
-   SOUND
+   SOUND (MATCH YOUR FILES)
 ========================= */
 const sfx = {
-  shoot: new Audio("assets/sfx/shoot.wav"),
-  explode: new Audio("assets/sfx/explode.wav"),
+  shoot: new Audio("assets/sfx/shoot.mp3"),
+  explode: new Audio("assets/sfx/explosion.ogg"),
+  impact: new Audio("assets/sfx/impact.mp3"),
+  power: new Audio("assets/sfx/powerup.mp3"),
   bg: new Audio("assets/music/bg_loop.mp3")
 };
+
 sfx.bg.loop = true;
 sfx.bg.volume = 0.3;
 
@@ -93,7 +96,7 @@ function screenShake(power = 6) {
 ========================= */
 const bullets = [];
 let lastShot = 0;
-const cooldown = 300;
+const cooldown = 280;
 
 function tryShoot() {
   const now = Date.now();
@@ -133,9 +136,8 @@ const enemyBullets = [];
 function invaderFire() {
   const shooters = invaders.filter(i => i.alive);
   if (!shooters.length) return;
-
   const s = shooters[Math.floor(Math.random() * shooters.length)];
-  enemyBullets.push({ x: s.x + 16, y: s.y + 20, vy: 3 });
+  enemyBullets.push({ x: s.x + 14, y: s.y + 20, vy: 3 });
 }
 
 setInterval(() => {
@@ -159,6 +161,7 @@ function applyPower(type) {
   if (type === "multishot") {
     multishot = true;
     multiEnd = Date.now() + 5000;
+    sfx.power.play();
   }
 }
 
@@ -168,13 +171,13 @@ function applyPower(type) {
 const particles = [];
 
 function explode(x, y) {
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 14; i++) {
     particles.push({
       x,
       y,
       vx: (Math.random() - 0.5) * 4,
       vy: (Math.random() - 0.5) * 4,
-      life: 30
+      life: 35
     });
   }
 }
@@ -196,10 +199,8 @@ function hit(a, b) {
 ========================= */
 function gameOver() {
   gameState = "gameover";
-  localStorage.setItem(
-    "pirates_high",
-    Math.max(score, Number(localStorage.getItem("pirates_high") || 0))
-  );
+  const best = Number(localStorage.getItem("pirates_high") || 0);
+  if (score > best) localStorage.setItem("pirates_high", score);
 }
 
 /* =========================
@@ -211,10 +212,11 @@ function nextLevel() {
 }
 
 /* =========================
-   DRAW FUNCTIONS
+   UI
 ========================= */
 function drawUI() {
   ctx.fillStyle = "#fff";
+  ctx.font = "14px monospace";
   ctx.fillText(`Score: ${score}`, 10, 20);
   ctx.fillText(`Lives: ${lives}`, canvas.width - 80, 20);
 }
@@ -224,10 +226,10 @@ function drawMenu() {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = "#fff";
   ctx.textAlign = "center";
-  ctx.font = "24px monospace";
-  ctx.fillText("PIRATES", canvas.width / 2, canvas.height / 2 - 20);
+  ctx.font = "26px monospace";
+  ctx.fillText("PIRATES", canvas.width / 2, canvas.height / 2 - 30);
   ctx.font = "14px monospace";
-  ctx.fillText("Press SPACE to start", canvas.width / 2, canvas.height / 2 + 20);
+  ctx.fillText("Press SPACE to start", canvas.width / 2, canvas.height / 2 + 10);
 }
 
 /* =========================
@@ -251,6 +253,8 @@ function gameLoop() {
     // movement
     if (keys["ArrowLeft"]) ship.x -= ship.speed;
     if (keys["ArrowRight"]) ship.x += ship.speed;
+    ship.x = Math.max(0, Math.min(canvas.width - ship.w, ship.x));
+
     if (keys[" "] && !keys["_shoot"]) {
       tryShoot();
       keys["_shoot"] = true;
@@ -259,7 +263,7 @@ function gameLoop() {
 
     if (multishot && Date.now() > multiEnd) multishot = false;
 
-    // draw ship
+    // ship
     ctx.drawImage(assets.ship, ship.x, ship.y, ship.w, ship.h);
 
     // bullets
@@ -269,13 +273,13 @@ function gameLoop() {
       if (b.y < 0) bullets.splice(bi, 1);
     });
 
-    // invaders
+    // enemies
     invaders.forEach(i => {
       if (i.alive)
         ctx.drawImage(assets.invader, i.x, i.y, i.w, i.h);
     });
 
-    // collisions
+    // bullet collisions
     bullets.forEach((b, bi) => {
       invaders.forEach(i => {
         if (i.alive && hit({ ...b, w: 4, h: 12 }, i)) {

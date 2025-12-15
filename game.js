@@ -2,13 +2,7 @@
    CANVAS SETUP
 ========================= */
 const canvas = document.getElementById("gameCanvas");
-
-if (!canvas) {
-  throw new Error("Canvas not found. ID mismatch.");
-}
-
 const ctx = canvas.getContext("2d");
-
 
 /* =========================
    GAME STATE
@@ -17,9 +11,10 @@ let gameState = "menu"; // menu | playing | paused | gameover
 let score = 0;
 let lives = 3;
 let level = 1;
+let hasStarted = false;
 
 /* =========================
-   ASSETS (MATCH YOUR FILES)
+   ASSETS
 ========================= */
 const assets = {};
 const assetList = {
@@ -30,32 +25,31 @@ const assetList = {
 };
 
 let loaded = 0;
-function loadAssets(start) {
+function loadAssets(cb) {
   const total = Object.keys(assetList).length;
   for (const key in assetList) {
     const img = new Image();
     img.src = assetList[key];
     img.onload = () => {
       loaded++;
-      if (loaded === total) start();
+      if (loaded === total) cb();
     };
     assets[key] = img;
   }
 }
 
 /* =========================
-   SOUND (MATCH YOUR FILES)
+   SOUND
 ========================= */
 const sfx = {
   shoot: new Audio("assets/sfx/shoot.mp3"),
   explode: new Audio("assets/sfx/explosion.ogg"),
-  impact: new Audio("assets/sfx/impact.mp3"),
   power: new Audio("assets/sfx/powerup.mp3"),
   bg: new Audio("assets/music/bg_loop.mp3")
 };
 
 sfx.bg.loop = true;
-sfx.bg.volume = 0.3;
+sfx.bg.volume = 0.25;
 
 /* =========================
    PLAYER
@@ -75,18 +69,26 @@ const keys = {};
 document.addEventListener("keydown", e => {
   keys[e.key] = true;
 
-  if (gameState === "menu" && e.key === " ") {
+  if (e.key === "p" && gameState === "playing") {
+    gameState = "paused";
+  } else if (e.key === "p" && gameState === "paused") {
     gameState = "playing";
-    sfx.bg.play();
-  }
-
-  if (e.key === "p") {
-    gameState = gameState === "playing" ? "paused" : "playing";
   }
 });
 
 document.addEventListener("keyup", e => {
   keys[e.key] = false;
+});
+
+/* =========================
+   AUTO START ON CLICK
+========================= */
+document.addEventListener("click", () => {
+  if (!hasStarted) {
+    hasStarted = true;
+    gameState = "playing";
+    sfx.bg.play();
+  }
 });
 
 /* =========================
@@ -102,7 +104,7 @@ function screenShake(power = 6) {
 ========================= */
 const bullets = [];
 let lastShot = 0;
-const cooldown = 280;
+const cooldown = 300;
 
 function tryShoot() {
   const now = Date.now();
@@ -135,43 +137,6 @@ function spawnInvaders() {
 }
 
 /* =========================
-   ENEMY BULLETS
-========================= */
-const enemyBullets = [];
-
-function invaderFire() {
-  const shooters = invaders.filter(i => i.alive);
-  if (!shooters.length) return;
-  const s = shooters[Math.floor(Math.random() * shooters.length)];
-  enemyBullets.push({ x: s.x + 14, y: s.y + 20, vy: 3 });
-}
-
-setInterval(() => {
-  if (gameState === "playing") invaderFire();
-}, 1200);
-
-/* =========================
-   POWERUPS
-========================= */
-const powerups = [];
-let multishot = false;
-let multiEnd = 0;
-
-function spawnPower(x, y) {
-  if (Math.random() < 0.15) {
-    powerups.push({ x, y, type: "multishot" });
-  }
-}
-
-function applyPower(type) {
-  if (type === "multishot") {
-    multishot = true;
-    multiEnd = Date.now() + 5000;
-    sfx.power.play();
-  }
-}
-
-/* =========================
    PARTICLES
 ========================= */
 const particles = [];
@@ -183,7 +148,7 @@ function explode(x, y) {
       y,
       vx: (Math.random() - 0.5) * 4,
       vy: (Math.random() - 0.5) * 4,
-      life: 35
+      life: 30
     });
   }
 }
@@ -201,41 +166,27 @@ function hit(a, b) {
 }
 
 /* =========================
-   GAME OVER
-========================= */
-function gameOver() {
-  gameState = "gameover";
-  const best = Number(localStorage.getItem("pirates_high") || 0);
-  if (score > best) localStorage.setItem("pirates_high", score);
-}
-
-/* =========================
-   LEVELS
-========================= */
-function nextLevel() {
-  level++;
-  spawnInvaders();
-}
-
-/* =========================
    UI
 ========================= */
-function drawUI() {
-  ctx.fillStyle = "#fff";
-  ctx.font = "14px monospace";
-  ctx.fillText(`Score: ${score}`, 10, 20);
-  ctx.fillText(`Lives: ${lives}`, canvas.width - 80, 20);
+function drawMenu() {
+  ctx.fillStyle = "rgba(0,0,0,0.6)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = "#6546FF";
+  ctx.textAlign = "center";
+  ctx.font = "32px monospace";
+  ctx.fillText("PIRATES", canvas.width / 2, canvas.height / 2 - 40);
+
+  ctx.font = "16px monospace";
+  ctx.fillText("CLICK ANYWHERE TO START", canvas.width / 2, canvas.height / 2);
+  ctx.fillText("← → MOVE • SPACE SHOOT", canvas.width / 2, canvas.height / 2 + 28);
 }
 
-function drawMenu() {
-  ctx.fillStyle = "rgba(0,0,0,0.7)";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "#fff";
-  ctx.textAlign = "center";
-  ctx.font = "26px monospace";
-  ctx.fillText("PIRATES", canvas.width / 2, canvas.height / 2 - 30);
+function drawUI() {
+  ctx.fillStyle = "#6546FF";
   ctx.font = "14px monospace";
-  ctx.fillText("Press SPACE to start", canvas.width / 2, canvas.height / 2 + 10);
+  ctx.textAlign = "left";
+  ctx.fillText(`Score: ${score}`, 10, 20);
 }
 
 /* =========================
@@ -253,7 +204,9 @@ function gameLoop() {
     shake *= 0.9;
   }
 
-  if (gameState === "menu") drawMenu();
+  if (gameState === "menu") {
+    drawMenu();
+  }
 
   if (gameState === "playing") {
     // movement
@@ -261,13 +214,7 @@ function gameLoop() {
     if (keys["ArrowRight"]) ship.x += ship.speed;
     ship.x = Math.max(0, Math.min(canvas.width - ship.w, ship.x));
 
-    if (keys[" "] && !keys["_shoot"]) {
-      tryShoot();
-      keys["_shoot"] = true;
-    }
-    if (!keys[" "]) keys["_shoot"] = false;
-
-    if (multishot && Date.now() > multiEnd) multishot = false;
+    if (keys[" "]) tryShoot();
 
     // ship
     ctx.drawImage(assets.ship, ship.x, ship.y, ship.w, ship.h);
@@ -279,20 +226,19 @@ function gameLoop() {
       if (b.y < 0) bullets.splice(bi, 1);
     });
 
-    // enemies
+    // invaders
     invaders.forEach(i => {
       if (i.alive)
         ctx.drawImage(assets.invader, i.x, i.y, i.w, i.h);
     });
 
-    // bullet collisions
+    // collisions
     bullets.forEach((b, bi) => {
       invaders.forEach(i => {
         if (i.alive && hit({ ...b, w: 4, h: 12 }, i)) {
           i.alive = false;
           bullets.splice(bi, 1);
           explode(i.x, i.y);
-          spawnPower(i.x, i.y);
           screenShake();
           score += 10;
           sfx.explode.play();
@@ -300,14 +246,12 @@ function gameLoop() {
       });
     });
 
-    if (invaders.every(i => !i.alive)) nextLevel();
-
     // particles
     particles.forEach((p, pi) => {
       p.x += p.vx;
       p.y += p.vy;
       p.life--;
-      ctx.fillStyle = "#ffd";
+      ctx.fillStyle = "#6546FF";
       ctx.fillRect(p.x, p.y, 2, 2);
       if (p.life <= 0) particles.splice(pi, 1);
     });
